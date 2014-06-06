@@ -1,0 +1,9 @@
+#--------------------------------------------------------------
+# This file is managed by Juju; ANY CHANGES WILL BE OVERWRITTEN
+#--------------------------------------------------------------
+
+ALLOWED_HOSTS = [
+{% for allowed_hosts in django_allowed_hosts.split(',') %}
+    '{{ allowed_hosts }}',
+{% endfor %}
+]

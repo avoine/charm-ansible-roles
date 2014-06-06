@@ -1,0 +1,12 @@
+import djcelery
+djcelery.setup_loader()
+
+BROKER_URL = 'amqp://{{ username }}:{{ password }}@{{ hostname }}:5672/{{ vhost }}'
+
+#CELERY_RESULT_BACKEND='djcelery.backends.database:DatabaseBackend',
+
+CELERY_ALWAYS_EAGER = {{ celery_always_eager }}
+
+INSTALLED_APPS += (
+   'djcelery',
+)

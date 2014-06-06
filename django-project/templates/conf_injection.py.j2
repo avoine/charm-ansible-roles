@@ -1,0 +1,18 @@
+#------------------------------------------------------------------------------
+# The following is the import code for the settings directory injected by Juju
+# Do not remove this comment
+#------------------------------------------------------------------------------
+
+import glob
+from os.path import abspath, dirname, join
+
+PROJECT_DIR = abspath(dirname(__file__))
+
+conffiles = glob.glob(join(PROJECT_DIR, '{{ settings_dir_name }}', '*.py'))
+conffiles.sort()
+
+if not 'INSTALLED_APPS' in locals():
+    from django.conf.global_settings import *
+
+for f in conffiles:
+    exec(open(abspath(f)).read())

@@ -1,0 +1,14 @@
+# Comma separated extra packages to install.
+additional_pip_packages: ""
+
+# Comma separated relative paths or urls to a requirement files. Note that the charm
+# won't manually upgrade packages defined in this file.
+# Leave the variable to an empty string if you don't want the feature.
+requirements_pip_files: ""
+
+# Where to search for requirements files
+requirements_pip_dir: ""
+
+# Extra arguments passed to pip.
+pip_extra_args: ""
+

@@ -1,0 +1,22 @@
+# The vcs software to use. Only hg, git, bzr, and svn are currently supported.
+vcs: ""
+
+# The vcs url to checkout.
+repos_url: ""
+
+# The repo branch to pull out from. If empty, it will pull out the
+# default branch or trunk (such as origin/master with git).
+# Can also be a changeset, revision number or even tag depending
+# on the chosen vcs.
+repos_branch: ""
+
+# The vcs user name.
+# Note: *Subversion only* settings. For other vcs use the repos_url for auth.
+repos_username: ""
+
+# The vcs password.
+# Note: *Subversion only* settings. For other vcs use the repos_url for auth.
+repos_password: ""
+
+# The destination directory of the checkout.
+repos_dir: ""

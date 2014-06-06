@@ -1,0 +1,18 @@
+#--------------------------------------------------------------
+# This file is managed by Juju; ANY CHANGES WILL BE OVERWRITTEN
+#--------------------------------------------------------------
+
+DATABASES = {
+    "default": {
+        "ENGINE": '{{ db_engine }}',
+        "NAME": '{{ db_database }}',
+        "USER": '{{ db_user }}',
+        "PASSWORD": '{{ db_password }}',
+        "HOST": '{{ db_host }}',
+        "PORT": '',
+    }
+}
+
+# Backward compatibility
+DATABASE_ENGINE=DATABASES
+

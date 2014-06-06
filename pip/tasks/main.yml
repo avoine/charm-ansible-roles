@@ -1,0 +1,17 @@
+tasks:
+
+    - name: Install pip dependencies
+      pip: name={{ item }} extra_args="{{ pip_extra_args }}"
+      with_lines: echo "{{ additional_pip_packages }}" | tr "," "\n"
+      when: additional_pip_packages != ''
+
+    - name: Install pip requirements
+      pip: requirements={{ requirements_pip_dir }}/{{ item }} extra_args="{{ pip_extra_args }}"
+      with_lines: echo "{{ requirements_pip_files }}" | tr "," "\n" | awk "! /^http/"
+      when: requirements_pip_files != ''
+
+    - name: Install http pip requirements
+      pip: requirements={{ item }} extra_args="{{ pip_extra_args }}"
+      with_lines: echo "{{ requirements_pip_files }}" | tr "," "\n" | awk "/^http/"
+      when: requirements_pip_files != ''
+

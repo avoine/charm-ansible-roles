@@ -1,0 +1,343 @@
+# user group ?
+
+- tasks:
+  - name: Install charm's dependencies
+    tags:
+        - install
+        - upgrade-charm
+    apt: pkg={{ item }} state=latest update_cache=yes
+    with_items:
+        - python-pip
+        - python-jinja2
+        - mercurial
+        - git-core
+        - subversion
+        - bzr
+        - gettext
+    register: result
+    until: result|success
+    retries: 24
+    delay: 10
+
+
+  - name: Install packages in extra_deb_pkgs
+    tags:
+        - install
+        - config-changed
+        - upgrade-charm
+    apt_kit: install_sources="{{ install_sources }}" install_keys="{{ install_keys }}" additional_distro_packages="{{ additional_distro_packages }}" requirements_apt_files="{{ requirements_apt_files }}" requirements_apt_dir="{{ requirements_apt_dir }}"
+
+  - name: Get the source code
+    tags:
+        - install
+        - upgrade-charm
+    vcs: vcs="{{ vcs }}" repos_url="{{ repos_url }}" repos_username="{{ repos_username }}" repos_password="{{ repos_password }}" repos_dir="{{ working_dir }}"
+    when: vcs != ''
+
+  - name: Create a Django project
+    tags:
+        - install
+        - upgrade-charm
+    command: PYTHONPATH={{ python_path }} {{ app_path }} startproject {{ working_dir }} --template {{ project_template_url }} --extension {{ project_template_extension }}
+    with_first_found:
+      - app_path:
+       - /usr/local/bin/django-admin
+       - /usr/bin/django-admin.py
+    when: vcs == ''
+    register: test_install_root
+    ignore_errors: True
+
+  - name: Create a Django project
+    tags:
+        - install
+        - upgrade-charm
+    command: PYTHONPATH={{ python_path }} {{ django_admin_cmd }} startproject --template {{ project_template_url }} --extension {{ project_template_extension }} chdir={{ working_dir }}
+    with_first_found:
+      - django_admin_cmd:
+       - /usr/local/bin/django-admin
+       - /usr/bin/django-admin.py
+    when: test_install_root|failed
+
+# Django
+  - name: Install the Django debian package
+    tags:
+        - install
+        - upgrade-charm
+    apt: pkg=python-django state=latest update_cache=yes
+    when: django_version == 'distro'
+
+  - name: Install Django pip package
+    tags:
+        - install
+        - upgrade-charm
+    pip: name="{{ django_version }} state=latest
+    when: django_version != 'distro' and django_version != ''
+
+# South
+  - name: Install the South debian package
+    tags:
+        - install
+        - upgrade-charm
+    apt: pkg=python-django-south state=latest update_cache=yes
+    when: django_south_version == 'distro'
+
+  - name: Install the South pip package
+    tags:
+        - install
+        - upgrade-charm
+    pip: name="{{ django_south_version }} state=latest
+    when: django_south_version != 'distro' and django_south_version != ''
+
+# settings injection
+  - name: Make conf directory for injections
+    tags:
+        - install
+        - upgrade-charm
+    command: mkdir {{ working_dir }}/{{ conf_dir_name }} creates={{ working_dir }}/{{ conf_dir_name }}
+
+  - name: Test for settings injections
+    tags:
+        - install
+        - upgrade-charm
+    command: grep "# The following is the import code for the settings directory injected by Juju" {{ settings_py_path }} chdir={{ working_dir }}/{{ settings_dir_name }}
+    register: result_settings_injections
+    ignore_errors: True
+
+  - name: Create settings injection template
+    tags:
+        - install
+        - upgrade-charm
+    template: dest=/tmp/conf_injection.py src=conf_injection.py.j2
+    when: result_conf_injections|failed
+
+  - name: Inject settings
+    tags:
+        - install
+        - upgrade-charm
+    shell: cat /tmp/conf_injection.py >> {{ settings_py_path }} chdir={{ working_dir }}/{{ settings_dir_name }}
+    when: result_conf_injections|failed
+
+  - name: remove settings temporary template
+    tags:
+        - install
+        - upgrade-charm
+    command: rm /tmp/conf_injection.py
+    when: result_conf_injections|failed
+
+# url injection
+  - name: Make urls directory for injections
+    tags:
+        - install
+        - upgrade-charm
+    command: mkdir {{ working_dir }}/{{ urls_dir_name }} creates={{ working_dir }}/{{ urls_dir_name }}
+
+  - name: Test for urls injections
+    tags:
+        - install
+        - upgrade-charm
+    command: grep "# The following is the import code for the urls directory injected by Juju" {{ urls_py_path }} chdir={{ working_dir }}/{{ urls_dir_name }}
+    register: result_urls_injections
+    ignore_errors: True
+
+  - name: Create urls injection template
+    tags:
+        - install
+        - upgrade-charm
+    template: dest=/tmp/urls_injection.py src=urls_injection.py.j2
+    when: result_urls_injections|failed
+
+  - name: Inject urls
+    tags:
+        - install
+        - upgrade-charm
+    shell: cat /tmp/urls_injection.py >> {{ urls_py_path }} chdir={{ working_dir }}/{{ urls_dir_name }}
+    when: result_urls_injections|failed
+
+  - name: remove urls temporary template
+    tags:
+        - install
+        - upgrade-charm
+    command: rm /tmp/urls_injection.py
+    when: result_urls_injections|failed
+
+# unit_config
+  - name: Create unit_config file
+    tags:
+        - install
+        - upgrade-charm
+    shell: cat "{{ unit_config | b64decode }}" > {{ vcs_clone_dir  }}/unit_config
+    when: unit_config != ''
+
+
+# Templates
+  - name: Write wsgi.py file.
+    tags:
+        - install
+        - config-changed
+        - upgrade-charm
+    template:
+        src: "wsgi.py.j2"
+        dest: "{{ wsgi_py_path }}"
+        owner: "{{ wsgi_user }}"
+        group: "{{ wsgi_group}}"
+        mode: 0640
+
+  - name: Write secret key file
+    tags:
+        - install
+        - config-changed
+        - upgrade-charm
+    template:
+        src: "secret.py.j2"
+        dest: "{{ settings_secret_path }}"
+        owner: "{{ wsgi_user }}"
+        group: "{{ wsgi_group}}"
+        mode: 0640
+
+  - name: Write allowed hosts file
+    tags:
+        - install
+        - config-changed
+        - upgrade-charm
+    template:
+        src: "allowed_hosts.py.j2"
+        dest: "{{ django_allowed_hosts_path }}"
+        owner: "{{ wsgi_user }}"
+        group: "{{ wsgi_group}}"
+        mode: 0640
+    when: django_allowed_hosts != ''
+
+  - name: Write django debug file
+    tags:
+        - install
+        - config-changed
+        - upgrade-charm
+    template:
+        src: "debug.py.j2"
+        dest: "{{ django_debug_path }}"
+        owner: "{{ wsgi_user }}"
+        group: "{{ wsgi_group}}"
+        mode: 0640
+    when: django_debug != ''
+
+  - name: Write django extra confg file
+    tags:
+      - install
+      - config-changed
+      - upgrade-charm
+    template:
+      src: "extra-conf.py.j2"
+      dest: "{{ django_extra_settings_path }}"
+      owner: "{{ wsgi_user }}"
+      group: "{{ wsgi_group}}"
+      mode: 0640
+    when: django_extra_settings != ''
+
+
+# wsgi
+  - name: Trigger WSGI reloading
+    tags:
+      - config-changed
+      - upgrade-charm
+      - django-settings-relation-joined
+      - django-settings-relation-changed
+      - pgsql-relation-joined
+      - pgsql-relation-changed
+      - pgsql-relation-broken
+      - mysql-relation-joined
+      - mysql-relation-changed
+      - mysql-root-relation-joined
+      - mysql-root-relation-changed
+      - mysql-shared-relation-joined
+      - mysql-shared-relation-changed
+      - mongodb-relation-joined
+      - mongodb-relation-changed
+      - mongodb_relation_broken
+      - redis-relation-joined
+      - redis-relation-changed
+      - redis_relation_broken
+      - amqp-relation-joined
+      - amqp-relation-changed
+      - amqp_relation_broken
+      - cache-relation-joined
+      - cache-relation-changed
+      - cache_relation_broken
+    command: >
+      relation-set -r {{ item.key }}
+      wsgi_timestamp={{ ansible_date_time.iso8601_micro }}
+    when: relations['wsgi']
+    with_dict: relations['wsgi']
+
+
+# django_settings
+  - name: Trigger django-settings reloading
+    tags:
+      - upgrade-charm
+    command: >
+      relation-set -r {{ item.key }}
+      django_settings_timestamp={{ ansible_date_time.iso8601_micro }}
+    when: relations['django-settings']
+    with_dict: relations['django-settings']
+
+  - name: django-settings relation
+    tags:
+      - django-settings-relation-joined
+      - django-settings-relation-changed
+    command: >
+      relation-set
+      settings_dir_path={{ settings_dir_path }}
+      settings_module={{ settings_module }}
+      urls_dir_path={{ urls_dir_path }}
+      working_dir={{ working_dir }}
+      django_admin_cmd={{ django_admin_cmd }}
+      wsgi_user={{ wsgi_user }}
+      wsgi_group={{ wsgi_group }}
+    with_first_found:
+      - django_admin_cmd:
+       - /usr/local/bin/django-admin
+       - /usr/bin/django-admin.py
+
+
+  - name: django-settings relation
+    tags:
+      - django-settings-relation-joined
+      - django-settings-relation-changed
+# FIXME
+# syncdb --noinput --settings=%s
+# %s migrate --settings=%s
+# where django_south
+
+amqp_celery.py.j2
+cache.py.j2
+cloudfiles.py.j2
+mongodb_engine.py.j2
+mysql_engine.py.j2
+pgsql_engine.py.j2
+redis_engine.py.j2
+south.py.j2
+
+# permissions
+# FIXME use wsgi_user
+  - name: Set the right permissions for working_dir
+    tags:
+      - install
+      - upgrade-charm
+      - django-settings-relation-joined
+      - django-settings-relation-changed
+      - pgsql-relation-joined
+      - pgsql-relation-changed
+      - mysql-relation-joined
+      - mysql-relation-changed
+      - mysql-root-relation-joined
+      - mysql-root-relation-changed
+      - mysql-shared-relation-joined
+      - mysql-shared-relation-changed
+      - mongodb-relation-joined
+      - mongodb-relation-changed
+      - redis-relation-joined
+      - redis-relation-changed
+      - amqp-relation-joined
+      - amqp-relation-changed
+      - cache-relation-joined
+      - cache-relation-changed
+    file: src={{ vcs_clone_dir }} owner={{ wsgi_user }} group={{ wsgi_group }} recurse=yes state=directory

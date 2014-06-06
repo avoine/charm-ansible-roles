@@ -1,0 +1,18 @@
+# List of extra package sources
+# YAML format.
+install_sources: ''
+
+# List of signing keys for install_sources package sources
+# YAML format.
+install_keys: ''
+
+# Comma separated extra packages to install.
+additional_distro_packages: ""
+
+# Comma separated relative paths to requirement files. Note that the charm
+# won't manually upgrade packages defined in this file.
+# Leave the variable to an empty string if you don't want the feature.
+requirements_apt_files: ""
+
+# where to search for requirements_apt_files
+requirements_apt_dir: ""

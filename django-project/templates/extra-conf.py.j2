@@ -1,0 +1,7 @@
+#--------------------------------------------------------------
+# This file is managed by Juju; ANY CHANGES WILL BE OVERWRITTEN
+#--------------------------------------------------------------
+
+{% for p in django_extra_settings.split(',') %}
+{{p}}
+{% endfor %}
