@@ -4,11 +4,11 @@
 
 DATABASES = {
     "default": {
-        "ENGINE": '{{ db_engine }}',
-        "NAME": '{{ db_database }}',
-        "USER": '{{ db_user }}',
-        "PASSWORD": '{{ db_password }}',
-        "HOST": '{{ db_host }}',
+        "ENGINE": '',
+        "NAME": '{{ current_relation.database }}',
+        "USER": '{{ current_relation.user }}',
+        "PASSWORD": '{{ current_relation.password }}',
+        "HOST": '{{ current_relation.host }}',
         "PORT": '',
     }
 }

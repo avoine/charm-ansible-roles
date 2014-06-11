@@ -1,34 +1,32 @@
-  tasks:
-# VCS
-    - name: get mercurial source
-      hg: repo={{ repos_url }} dest={{ repos_dir }}
-      when: vcs == 'hg' or vcs == 'mercurial' and not repos_branch
+- name: get mercurial source
+  hg: repo={{ repos_url }} dest={{ repos_dir }}
+  when: vcs == 'hg' or vcs == 'mercurial' and not repos_branch
 
-    - name: get bzr source
-      bzr: name={{ repos_url }} dest={{ repos_dir }}
-      when: vcs == 'bzr' and not repos_branch
+- name: get bzr source
+  bzr: name={{ repos_url }} dest={{ repos_dir }}
+  when: vcs == 'bzr' and not repos_branch
 
-    - name: get git source
-      git: repo={{ repos_url }} dest={{ repos_dir }}
-      when: vcs == 'git' and not repos_branch
+- name: get git source
+  git: repo={{ repos_url }} dest={{ repos_dir }}
+  when: vcs == 'git' and not repos_branch
 
-    - name: get subversion source
-      subversion: repo={{ repos_url }} dest={{ repos_dir }} username={{repos_username}} password={{repos_password}}
-      when: vcs == 'svn' or vcs == 'subversion' and not repos_branch
+- name: get subversion source
+  subversion: repo={{ repos_url }} dest={{ repos_dir }} username={{ repos_username }} password={{ repos_password }}
+  when: vcs == 'svn' or vcs == 'subversion' and not repos_branch
 
-# VCS + Branch
-    - name: get mercurial source with branch
-      hg: repo={{ repos_url }} dest={{ repos_dir }} revision={{ repos_branch }}
-      when: vcs == 'hg' or vcs == 'mercurial' and repos_branch
+#VCS + Branch
+- name: get mercurial source with branch
+  hg: repo={{ repos_url }} dest={{ repos_dir }} revision={{ repos_branch }}
+  when: vcs == 'hg' or vcs == 'mercurial' and repos_branch
 
-    - name: get bzr source
-      bzr: name={{ repos_url }} dest={{ repos_dir }} version={{ repos_branch }}
-      when: vcs == 'bzr' and repos_branch
+- name: get bzr source
+  bzr: name={{ repos_url }} dest={{ repos_dir }} version={{ repos_branch }}
+  when: vcs == 'bzr' and repos_branch
 
-    - name: get git source with branch
-      git: repo={{ repos_url }} dest={{ repos_dir }} version={{ repos_branch }}
-      when: vcs == 'git' and repos_branch
+- name: get git source with branch
+  git: repo={{ repos_url }} dest={{ repos_dir }} version={{ repos_branch }}
+  when: vcs == 'git' and repos_branch
 
-    - name: get subversion source
-      subversion: repo={{ repos_url }} dest={{ repos_dir }} username={{repos_username}} password={{repos_password}} revision={{ repos_branch }}
-      when: vcs == 'svn' or vcs == 'subversion' and repos_branch
+- name: get subversion source
+  subversion: repo={{ repos_url }} dest={{ repos_dir }} username={{ repos_username }} password={{ repos_password }} revision={{ repos_branch }}
+  when: vcs == 'svn' or vcs == 'subversion' and repos_branch

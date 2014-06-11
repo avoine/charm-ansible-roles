@@ -3,6 +3,6 @@
 #--------------------------------------------------------------
 
 MONGO_DB = {
-    'host': '{{ db_host }}',
-    'port': {{ db_port }},
+    'host': '{{ current_relation.host }}',
+    'port': {{ current_relation.port }},
 }

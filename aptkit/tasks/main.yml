@@ -1,0 +1,31 @@
+- name: Add APT keys by url
+  apt_key: url={{ item }} state=present
+  with_lines: echo "{{ install_keys }}" | tr "," "\n" | awk "/^http/"
+  when: install_keys != ''
+
+- name: Add APT keys by file
+  apt_key: file={{ item }} state=present
+  with_lines: echo "{{ install_keys }}" | tr "," "\n" | awk "/^\//"
+  when: install_keys != ''
+
+- name: Add APT keys by data
+  apt_key: data={{ item }} state=present
+  with_lines: echo "{{ install_keys }}" | tr "," "\n" | awk "! /^\//" | awk "! /^http/"
+  when: install_keys != ''
+
+- name: Add APT respositories
+  apt_repository: repo={{ item }} state=present
+  with_items: install_sources
+  when: install_sources != ''
+
+- name: Install additional_distro_packages
+  apt: pkg={{ item }} state=latest update_cache=yes
+  with_items: additional_distro_packages.split(',')
+  register: result
+  until: result|success
+  retries: 24
+  delay: 10
+
+
+
+#requirements_apt_files

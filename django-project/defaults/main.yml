@@ -57,7 +57,7 @@ application_path: ""
 # The contents will be written to a file named
 #  <install_root>/<unit>/unit_config
 # where <unit> is the location the branch is extracted to.
-unit_config:
+unit_config: ""
 
 # Comma separated extra packages to install.
 additional_distro_packages: "python-imaging,python-docutils,python-tz"
@@ -96,12 +96,12 @@ django_debug: False
 
 # A space separated list for settings.ALLOWED_HOSTS in django. Default
 # value will be the hostname, fully-qualified name, and public IP.
-django_allowed_hosts:
+django_allowed_hosts: ""
 
 # Allows setting up extra settings.* values for Django. Acceptable
 # values are limited to comma delimited key-value pairs like:
 #   SETTING_X=foo, SETTING_Y=bar
-django_extra_settings:
+django_extra_settings: ""
 
 # The name of the directory where generated url will be written.
 # Set the variable to an empty string if you don't want the feature.

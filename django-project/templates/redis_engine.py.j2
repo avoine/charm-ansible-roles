@@ -3,7 +3,7 @@
 #--------------------------------------------------------------
 
 REDIS = {
-    'host': '{{ db_host }}',
-    'port': {{ db_port }},
+    'host': '{{ current_relation.hostname }}',
+    'port': {{ current_relation.port }},
     'db': 0,
 }

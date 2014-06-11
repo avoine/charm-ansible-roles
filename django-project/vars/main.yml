@@ -4,54 +4,46 @@
 # unit_private_address: 10.0.3.
 # unit_public_address: 10.0.3.
 
-unit_name: {{ local_unit | regex_replace('(.*)/.*', '\\1' }}
-sanitized_unit_name: {{ unit_name | replace('-','_') }}
+sanitized_unit_name: "{{ local_unit | regex_replace('^(.*)/.*$', '\\\\1') | regex_replace('-', '_') }}"
+vcs_clone_dir: "{{ install_root }}/{{ sanitized_unit_name }}"
 
-site_secret_key = config_data['site_secret_key']
-if not site_secret_key:
-    site_secret_key = ''.join([choice('abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)') for i in range(50)])
-
-
-if application_path:
-    working_dir: {{ vcs_clone_dir }}/{{ application_path }}
-else:
-    working_dir: {{ vcs_clone_dir }}
+#if application_path:
+#    working_dir: "{{ vcs_clone_dir }}/{{ application_path }}"
+#else:
+working_dir: "{{ vcs_clone_dir }}"
 
 
-if python_path:
-    python_path: {{ python_path }}:{{ working_dir }}/../
-else:
-    python_path: {{ working_dir }}/../
+#if python_path:
+#    python_path: "{{ python_path }}:{{ working_dir }}/../"
+#else:
+python_path: "{{ working_dir }}/../"
 
 
-if django_settings:
-    settings_module: {{ django_settings }}  #andy hack
-else:
-    if application_path:
-        settings_module: {{ working_dir | basename }}.{{ settings }}
-    else:
-        settings_module: {{ sanitized_unit_name }}.{{ settings }}
+#if django_settings:
+#    settings_module: "{{ django_settings }}"
+#else:
+#    if application_path:
+#        settings_module: "{{ working_dir | basename }}.{{ settings }}"
+#    else:
+settings_module: "{{ sanitized_unit_name }}.settings"
 
-settings_py_path: {{ working_dir }}/{{ settings_injection_path }}
-urls_py_path: {{ working_dir }}/{{ urls_injection_path }}
-settings_dir_path: {{ working_dir }}/{{ settings_injection_path | dirname }}/{{ settings_dir_name }}
-urls_dir_path: {{ working_dir }}/{{ urls_injection_path | dirname }}/{{ urls_dir_name }}
-settings_secret_path: {{ settings_dir_path }}/{{ settings_secret_key_name }}
-settings_database_path: {{ settings_dir_path }}/{{ settings_database_name }}
-amqp_path: {{ settings_dir_path }}/{{ settings_amqp_name }}
+settings_py_path: "{{ working_dir }}/{{ settings_injection_path }}"
+urls_py_path: "{{ working_dir }}/{{ urls_injection_path }}"
+settings_dir_path: "{{ working_dir }}/{{ settings_injection_path | dirname }}/{{ settings_dir_name }}"
+urls_dir_path: "{{ working_dir }}/{{ urls_injection_path | dirname }}/{{ urls_dir_name }}"
+settings_secret_path: "{{ settings_dir_path }}/{{ settings_secret_key_name }}"
+amqp_path: "{{ settings_dir_path }}/{{ settings_amqp_name }}"
+wsgi_py_path: "{{ working_dir }}/wsgi.py"
 
-django_allowed_hosts_path: {{ settings_dir_path }}/60-allowed.py
-django_debug_path: {{ settings_dir_path }}/60-debug.py
-django_extra_settings_path: {{ settings_dir_path }}/60-extra-conf.py
+django_allowed_hosts_path: "{{ settings_dir_path }}/60-allowed.py"
+django_debug_path: "{{ settings_dir_path }}/60-debug.py"
+django_extra_settings_path: "{{ settings_dir_path }}/60-extra-conf.py"
 
 # vcs
-vcs_clone_dir: {{ install_root }}/{{ sanitized_unit_name }}
+repos_dir: "{{ vcs_clone_dir }}"
 
 # pip
-requirements_pip_dir: {{ working_dir }}
+requirements_pip_dir: "{{ working_dir }}"
 
 # apt
-requirements_apt_dir: {{ working_dir }}
-
-hook_name: os.path.basename(sys.argv[0] }}
-
+requirements_apt_dir: "{{ working_dir }}"

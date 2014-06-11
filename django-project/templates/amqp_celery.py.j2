@@ -1,7 +1,8 @@
 import djcelery
 djcelery.setup_loader()
 
-BROKER_URL = 'amqp://{{ username }}:{{ password }}@{{ hostname }}:5672/{{ vhost }}'
+# FIXME celery_amqp_vhost config
+BROKER_URL = 'amqp://{{ current_relation.username }}:{{ current_relation.password }}@{{ current_relation.hostname }}:5672/{{ sanitized_unit_name }}'
 
 #CELERY_RESULT_BACKEND='djcelery.backends.database:DatabaseBackend',
 

@@ -4,7 +4,7 @@
 
 CACHES = {
     'default': {
-        'BACKEND': '{{cache_engine}}',
-        'LOCATION': '{{cache_host}}:{{cache_port}}',
+        'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
+        'LOCATION': '{{ current_relation.host }}:{{ current_relation.port }}',
     }
 }
