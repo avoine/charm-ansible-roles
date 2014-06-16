@@ -5,3 +5,12 @@
     wsgi_timestamp={{ ansible_date_time.iso8601_micro }}
   when: relations['wsgi']
   with_dict: relations['wsgi']
+
+- name: syncdb
+  shell: PYTHONPATH={{ python_path_list }} {{ django_admin_cmd.stdout }} syncdb --noinput --settings {{ settings_module }} chdir={{ install_root }}
+  ignore_errors: True
+
+- name: migrate
+  shell: PYTHONPATH={{ python_path_list }} {{ django_admin_cmd.stdout }} migrate --settings {{ settings_module }} chdir={{ install_root }}
+  when: django_south
+  ignore_errors: True

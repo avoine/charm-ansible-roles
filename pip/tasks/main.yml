@@ -1,15 +1,22 @@
+- name: Install python-pip
+  apt: pkg=python-pip state=latest update_cache=yes
+  register: result
+  until: result|success
+  retries: 24
+  delay: 10
+
 - name: Install pip dependencies
-  pip: name={{ item }} extra_args={{ pip_extra_args }}
+  pip: name="{{ item }}" extra_args="{{ pip_extra_args }}"
   with_items: additional_pip_packages.split(',')
   when: additional_pip_packages != ''
 
 - name: Install pip requirements
-  pip: requirements={{ requirements_pip_dir }}/{{ item }} extra_args={{ pip_extra_args }}
+  pip: requirements="{{ requirements_pip_dir }}/{{ item }}" extra_args="{{ pip_extra_args }}"
   with_lines: echo "{{ requirements_pip_files }}" | tr "," "\n" | awk "! /^http/"
   when: requirements_pip_files != ''
 
 - name: Install http pip requirements
-  pip: requirements={{ item }} extra_args={{ pip_extra_args }}
+  pip: requirements="{{ item }}" extra_args="{{ pip_extra_args }}"
   with_lines: echo "{{ requirements_pip_files }}" | tr "," "\n" | awk "/^http/"
   when: requirements_pip_files != ''
 

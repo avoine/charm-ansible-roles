@@ -1,9 +1,10 @@
-# user group ?
+---
+
 - name: Install charm's dependencies
   tags:
     - install
     - upgrade-charm
-  apt: pkg={{ item }} state=latest update_cache=yes
+  apt: pkg="{{ item }}" state=latest update_cache=yes
   with_items:
     - python-pip
     - python-jinja2
@@ -12,6 +13,7 @@
     - subversion
     - bzr
     - gettext
+    - pwgen
   register: result
   until: result|success
   retries: 24
@@ -29,7 +31,7 @@
   tags:
     - install
     - upgrade-charm
-  pip: name={{ django_version }} state=latest
+  pip: name="{{ django_version }}" state=latest
   when: django_version != 'distro' and django_version != ''
 
 # South
@@ -44,14 +46,18 @@
   tags:
     - install
     - upgrade-charm
-  pip: name={{ django_south_version }} state=latest
+  pip: name="{{ django_south_version }}" state=latest
   when: django_south_version != 'distro' and django_south_version != ''
 
-# Utils
-- name: find django admin command
+# FIXME when https://github.com/ansible/ansible/pull/7039 gets merged and publish
+# this should have tag: all
+- include: dynamic_vars.yml
   tags:
     - install
+    - config-changed
     - upgrade-charm
+    - wsgi-relation-joined
+    - wsgi-relation-changed
     - django-settings-relation-joined
     - django-settings-relation-changed
     - pgsql-relation-joined
@@ -70,15 +76,14 @@
     - amqp-relation-changed
     - cache-relation-joined
     - cache-relation-changed
-  shell: command -v /usr/bin/django-admin || command -v /usr/local/bin/django-admin.py
-  register: django_admin_cmd
+
 
 # Django startproject for version >= 1.4 (distro)
 - name: Create a Django project
   tags:
       - install
       - upgrade-charm
-  shell: PYTHONPATH={{ python_path }} {{ django_admin_cmd.stdout }} startproject {{ sanitized_unit_name }} {{ install_root }} --template {{ project_template_url }} --extension {{ project_template_extension }}
+  shell: PYTHONPATH={{ python_path_list }} {{ django_admin_cmd.stdout }} startproject {{ sanitized_unit_name }} {{ install_root }} --template {{ project_template_url }} --extension {{ project_template_extension }}
   when: vcs == ''
   register: test_install_root
   ignore_errors: True
@@ -89,7 +94,7 @@
   tags:
       - install
       - upgrade-charm
-  shell: PYTHONPATH={{ python_path }} {{ django_admin_cmd.stdout }} startproject {{ sanitized_unit_name }} chdir={{ install_root }}
+  shell: PYTHONPATH={{ python_path_list }} {{ django_admin_cmd.stdout }} startproject {{ sanitized_unit_name }} chdir={{ install_root }}
   when: test_install_root|failed
 
 # settings injection
@@ -98,6 +103,7 @@
     - install
     - upgrade-charm
   command: mkdir {{ working_dir }}/{{ settings_dir_name }} creates={{ working_dir }}/{{ settings_dir_name }}
+  when: settings_dir_name != ''
 
 - name: Test for settings injections
   tags:
@@ -106,13 +112,14 @@
   command: grep "# The following is the import code for the settings directory injected by Juju" {{ settings_py_path }} chdir={{ working_dir }}/{{ settings_dir_name }}
   register: result_settings_injections
   ignore_errors: True
+  when: settings_dir_name != ''
 
 - name: Create settings injection template
   tags:
     - install
     - upgrade-charm
   template: dest=/tmp/conf_injection.py src=conf_injection.py.j2
-  when: result_settings_injections|failed
+  when: result_settings_injections|failed and settings_dir_name != ''
 
 - name: Inject settings
   tags:
@@ -126,7 +133,7 @@
     - install
     - upgrade-charm
   command: rm /tmp/conf_injection.py
-  when: result_settings_injections|failed
+  when: result_settings_injections|failed and settings_dir_name != ''
 
 # url injection
 - name: Make urls directory for injections
@@ -134,6 +141,7 @@
     - install
     - upgrade-charm
   command: mkdir {{ working_dir }}/{{ urls_dir_name }} creates={{ working_dir }}/{{ urls_dir_name }}
+  when: urls_dir_name != ''
 
 - name: Test for urls injections
   tags:
@@ -142,27 +150,28 @@
   command: grep "# The following is the import code for the urls directory injected by Juju" {{ urls_py_path }} chdir={{ working_dir }}/{{ urls_dir_name }}
   register: result_urls_injections
   ignore_errors: True
+  when: urls_dir_name != ''
 
 - name: Create urls injection template
   tags:
     - install
     - upgrade-charm
   template: dest=/tmp/urls_injection.py src=urls_injection.py.j2
-  when: result_urls_injections|failed
+  when: result_urls_injections|failed and urls_dir_name != ''
 
 - name: Inject urls
   tags:
     - install
     - upgrade-charm
   shell: cat /tmp/urls_injection.py >> {{ urls_py_path }} chdir={{ working_dir }}/{{ urls_dir_name }}
-  when: result_urls_injections|failed
+  when: result_urls_injections|failed and urls_dir_name != ''
 
 - name: remove urls temporary template
   tags:
     - install
     - upgrade-charm
   command: rm /tmp/urls_injection.py
-  when: result_urls_injections|failed
+  when: result_urls_injections|failed and urls_dir_name != ''
 
 # unit_config
 - name: Create unit_config file
@@ -171,37 +180,27 @@
     - upgrade-charm
   shell: cat "{{ unit_config | b64decode }}" > {{ vcs_clone_dir  }}/unit_config
   when: unit_config != ''
+  notify:
+    - Restart wsgi
 
 
 # Templates
-- name: Write wsgi.py file.
+- name: Write wsgi.py and secret file
   tags:
     - install
     - config-changed
     - upgrade-charm
   template:
-      src: "wsgi.py.j2"
-      dest: "{{ wsgi_py_path }}"
+      src: "{{ item.src }}"
+      dest: "{{ item.dest }}"
       owner: "{{ wsgi_user }}"
       group: "{{ wsgi_group}}"
       mode: 0640
-
-- name: Generate the secret key if none is provided
-  command: pwgen -s 51 1
-  register: site_secret_key
-  when: site_secret_key == ''
-
-- name: Write secret key file
-  tags:
-    - install
-    - config-changed
-    - upgrade-charm
-  template:
-      src: "secret.py.j2"
-      dest: "{{ settings_secret_path }}"
-      owner: "{{ wsgi_user }}"
-      group: "{{ wsgi_group}}"
-      mode: 0640
+  with_items:
+      - { src: "wsgi.py.j2",   dest: "{{ wsgi_py_path }}" }
+      - { src: "secret.py.j2", dest: "{{ settings_secret_path }}" }
+  notify:
+    - Restart wsgi
 
 - name: Write allowed hosts file
   tags:
@@ -215,6 +214,8 @@
       group: "{{ wsgi_group}}"
       mode: 0640
   when: django_allowed_hosts != ''
+  notify:
+    - Restart wsgi
 
 - name: Write django debug file
   tags:
@@ -228,6 +229,8 @@
       group: "{{ wsgi_group}}"
       mode: 0640
   when: django_debug != ''
+  notify:
+    - Restart wsgi
 
 - name: Write django extra confg file
   tags:
@@ -241,7 +244,8 @@
     group: "{{ wsgi_group}}"
     mode: 0640
   when: django_extra_settings != ''
-
+  notify:
+    - Restart wsgi
 
 
 # wsgi relation
@@ -254,7 +258,7 @@
     listen_ip={{ listen_ip }}
     port={{ port }}
     working_dir={{ working_dir }}
-    python_path={{ python_path }}
+    python_path={{ python_path_list }}
     wsgi_wsgi_file={{ wsgi_wsgi_file }}
     wsgi_workers={{ wsgi_workers }}
     wsgi_worker_class={{ wsgi_worker_class }}
@@ -301,6 +305,7 @@
     - django-settings-relation-changed
   command: >
     relation-set
+    python_path={{ python_path_list }}
     settings_dir_path={{ settings_dir_path }}
     settings_module={{ settings_module }}
     urls_dir_path={{ urls_dir_path }}
@@ -336,6 +341,10 @@
     group: "{{ wsgi_group}}"
     mode: 0640
   when: current_relation.database is defined
+  notify:
+    - syncdb
+    - migrate
+    - Restart wsgi
 
 # pgsql-relation-broken
 # run('rm %s' % settings_database_path % {'engine_name': 'pgsql'})
@@ -374,6 +383,10 @@
     group: "{{ wsgi_group}}"
     mode: 0640
   when: current_relation.database is defined
+  notify:
+    - syncdb
+    - migrate
+    - Restart wsgi
 
 #mysql-relation-broken
 #mysql-root-relation-broken
@@ -403,6 +416,8 @@
     group: "{{ wsgi_group}}"
     mode: 0640
   when: current_relation.hostname is defined
+  notify:
+    - Restart wsgi
 
 # Redis relation
 - name: Install redis dependencies
@@ -428,6 +443,8 @@
     group: "{{ wsgi_group}}"
     mode: 0640
   when: current_relation.hostname is defined
+  notify:
+    - Restart wsgi
 
 # redis_relation_broken
 
@@ -449,6 +466,10 @@
     group: "{{ wsgi_group}}"
     mode: 0640
   when: current_relation.hostname is defined
+  notify:
+    - syncdb
+    - migrate
+    - Restart wsgi
 
 # Cache relation
 - name: Install cache dependencies
@@ -474,6 +495,8 @@
     group: "{{ wsgi_group}}"
     mode: 0640
   when: current_relation.host is defined
+  notify:
+    - Restart wsgi
 
 # cache_relation_broken
 
@@ -486,44 +509,9 @@
 
 # website_relation_broken
 
-# syncdb and migrate
-- name: django-settings relation syncdb
-  tags:
-    - django-settings-relation-joined
-    - django-settings-relation-changed
-    - pgsql-relation-joined
-    - pgsql-relation-changed
-    - mysql-relation-joined
-    - mysql-relation-changed
-    - mysql-root-relation-joined
-    - mysql-root-relation-changed
-    - mysql-shared-relation-joined
-    - mysql-shared-relation-changed
-    - amqp-relation-joined
-    - amqp-relation-changed
-  shell: PYTHONPATH={{ python_path }} {{ django_admin_cmd.stdout }} syncdb --noinput --settings {{ settings_module }} chdir={{ install_root }}
-  ignore_errors: True
-
-- name: django-settings relation migrate
-  tags:
-    - django-settings-relation-joined
-    - django-settings-relation-changed
-    - pgsql-relation-joined
-    - pgsql-relation-changed
-    - mysql-relation-joined
-    - mysql-relation-changed
-    - mysql-root-relation-joined
-    - mysql-root-relation-changed
-    - mysql-shared-relation-joined
-    - mysql-shared-relation-changed
-    - amqp-relation-joined
-    - amqp-relation-changed
-  shell: PYTHONPATH={{ python_path }} {{ django_admin_cmd.stdout }} migrate --settings {{ settings_module }} chdir={{ install_root }}
-  when: django_south
-  ignore_errors: True
 
 # permissions
-# FIXME use wsgi_user
+# FIXME use sudo wsgi_user
 - name: Set the right permissions for working_dir
   tags:
     - install
@@ -552,43 +540,9 @@
     group={{ wsgi_group }}
     recurse=yes state=directory
 
-# wsgi
-- name: Restart wsgi
-  # Trigger the wsgi subordinate to restart by changing settings.
-  tags:
-    - config-changed
-    - upgrade-charm
-    - django-settings-relation-joined
-    - django-settings-relation-changed
-    - pgsql-relation-joined
-    - pgsql-relation-changed
-    - pgsql-relation-broken
-    - mysql-relation-joined
-    - mysql-relation-changed
-    - mysql-root-relation-joined
-    - mysql-root-relation-changed
-    - mysql-shared-relation-joined
-    - mysql-shared-relation-changed
-    - mongodb-relation-joined
-    - mongodb-relation-changed
-    - mongodb_relation_broken
-    - redis-relation-joined
-    - redis-relation-changed
-    - redis_relation_broken
-    - amqp-relation-joined
-    - amqp-relation-changed
-    - amqp_relation_broken
-    - cache-relation-joined
-    - cache-relation-changed
-    - cache_relation_broken
-  command: >
-    relation-set -r {{ item.key }}
-    wsgi_timestamp={{ ansible_date_time.iso8601_micro }}
-  when: relations['wsgi']
-  with_dict: relations['wsgi']
 
 # start and stop hooks
-- name: Start Gunicorn
+- name: Start or Restart Gunicorn
   tags:
     - start
   command: service gunicorn start || service gunicorn restart
@@ -597,5 +551,5 @@
 - name: Stop Gunicorn
   tags:
     - stop
-  command: service gunicorn start || service gunicorn restart
+  command: service gunicorn stop
   ignore_errors: True

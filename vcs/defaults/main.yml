@@ -19,4 +19,4 @@ repos_username: ""
 repos_password: ""
 
 # The destination directory of the checkout.
-repos_dir: ""
+vcs_clone_dir: ""

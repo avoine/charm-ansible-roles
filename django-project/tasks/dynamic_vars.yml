@@ -1,0 +1,39 @@
+- name: set working_dir if application_path != ''
+  set_fact: working_dir="{{ vcs_clone_dir }}/{{ application_path }}"
+  when: application_path != ''
+
+- name: set working_dir if application_path == ''
+  set_fact: working_dir="{{ vcs_clone_dir }}"
+  when: application_path == ''
+
+- name: debug
+  debug: var=application_path
+
+- name: set python_path_list if python_path != ''
+  set_fact: python_path_list="{{ working_dir }}/../:{{ python_path }}"
+  when: python_path != ''
+
+- name: set python_path_list if python_path == ''
+  set_fact: python_path_list="{{ working_dir }}/../"
+  when: python_path == ''
+
+- name: set settings_module if django_settings != ''
+  set_fact: settings_module="{{ django_settings }}"
+  when: django_settings != ''
+
+- name: set settings_module if django_settings == ''
+  set_fact: settings_module="{{ working_dir | basename }}.settings"
+  when: django_settings == ''
+
+- name: Generate the secret key if none is provided
+  command: pwgen -s 51 1
+  register: pwgen_site_secret_key
+  when: site_secret_key == ''
+
+- name: set site_secret_key with pwgen_site_secret_key
+  set_fact: site_secret_key="{{ pwgen_site_secret_key.stdout }}"
+  when: site_secret_key == ''
+
+- name: Found the django-admin script
+  shell: command -v /usr/bin/django-admin || command -v /usr/local/bin/django-admin.py
+  register: django_admin_cmd
